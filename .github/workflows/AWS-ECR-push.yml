@@ -1,0 +1,69 @@
+name: AWS ECR Docker Push
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: false
+        type: string
+        default: '.'
+      aws-region:
+        required: false
+        type: string
+        default: 'us-east-1'
+      ecr-repository:
+        required: true
+        type: string
+      image-tag:
+        required: false
+        type: string
+        default: ${{ github.sha }}
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      TEAMS_WEBHOOK_URL:
+        required: false
+      SLACK_WEBHOOK_URL:
+        required: false
+
+jobs:
+  build-and-push:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Notify on Completion
+        if: always()
+        uses: xlmriosx/shared-library/actions/notify@main
+        with:
+          status: ${{ job.status }}
+          teams_webhook_url: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          title: 'AWS ECR Push Completed'

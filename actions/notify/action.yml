@@ -1,0 +1,79 @@
+name: 'Agnostic Notify'
+description: 'Send notifications to various platforms (Teams, Slack) based on job status'
+
+inputs:
+  status:
+    description: 'The status of the job (success, failure, cancelled)'
+    required: true
+  teams_webhook_url:
+    description: 'Microsoft Teams Webhook URL'
+    required: false
+  slack_webhook_url:
+    description: 'Slack Webhook URL'
+    required: false
+  title:
+    description: 'Custom title for the notification'
+    required: false
+    default: 'GitHub Actions Run Status'
+
+runs:
+  using: "composite"
+  steps:
+    # ---------------------------------------------------------
+    # MICROSOFT TEAMS NOTIFICATION
+    # ---------------------------------------------------------
+    - name: Notify Microsoft Teams
+      if: ${{ inputs.teams_webhook_url != '' }}
+      shell: bash
+      run: |
+        COLOR="808080" # Default (Cancelled)
+        if [ "${{ inputs.status }}" == "success" ]; then
+          COLOR="28a745" # Green
+        elif [ "${{ inputs.status }}" == "failure" ]; then
+          COLOR="dc3545" # Red
+        fi
+        
+        PAYLOAD=$(cat <<EOF
+        {
+          "@type": "MessageCard",
+          "@context": "http://schema.org/extensions",
+          "themeColor": "$COLOR",
+          "summary": "${{ inputs.title }}",
+          "sections": [{
+            "activityTitle": "${{ inputs.title }}",
+            "activitySubtitle": "Status: ${{ inputs.status }}",
+            "facts": [
+              { "name": "Repository:", "value": "${{ github.repository }}" },
+              { "name": "Ref:", "value": "${{ github.ref }}" },
+              { "name": "Actor:", "value": "${{ github.actor }}" }
+            ],
+            "markdown": true
+          }]
+        }
+        EOF
+        )
+        
+        curl -H "Content-Type: application/json" -d "$PAYLOAD" "${{ inputs.teams_webhook_url }}"
+
+    # ---------------------------------------------------------
+    # SLACK NOTIFICATION
+    # ---------------------------------------------------------
+    - name: Notify Slack
+      if: ${{ inputs.slack_webhook_url != '' }}
+      shell: bash
+      run: |
+        EMOJI="⚪" # Default (Cancelled)
+        if [ "${{ inputs.status }}" == "success" ]; then
+          EMOJI="✅"
+        elif [ "${{ inputs.status }}" == "failure" ]; then
+          EMOJI="❌"
+        fi
+        
+        PAYLOAD=$(cat <<EOF
+        {
+          "text": "$EMOJI *${{ inputs.title }}*\n*Status:* ${{ inputs.status }}\n*Repo:* ${{ github.repository }}\n*Actor:* ${{ github.actor }}"
+        }
+        EOF
+        )
+        
+        curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "${{ inputs.slack_webhook_url }}"

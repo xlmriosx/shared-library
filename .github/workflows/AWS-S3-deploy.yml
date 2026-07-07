@@ -1,0 +1,71 @@
+name: AWS S3 React Deploy
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+      node-version:
+        required: false
+        type: string
+        default: '20'
+      aws-region:
+        required: false
+        type: string
+        default: 'us-east-1'
+      s3-bucket:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      TEAMS_WEBHOOK_URL:
+        required: false
+      SLACK_WEBHOOK_URL:
+        required: false
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to S3
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React App
+        run: npm run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Deploy to S3
+        run: aws s3 sync ./build s3://${{ inputs.s3-bucket }} --delete
+
+      - name: Notify on Completion
+        if: always()
+        uses: xlmriosx/shared-library/actions/notify@main
+        with:
+          status: ${{ job.status }}
+          teams_webhook_url: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          title: 'AWS S3 Deploy Completed'
