@@ -73,6 +73,12 @@ jobs:
       - name: Run Safety (Dependency Scanning)
         run: safety check || echo "No requirements found or safety check bypassed"
 
+      - name: Run Trivy vulnerability scanner in fs mode
+        uses: xlmriosx/shared-library/actions/trivy-scan@main
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest

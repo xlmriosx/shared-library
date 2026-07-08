@@ -63,6 +63,12 @@ jobs:
       - name: Run npm audit
         run: npm audit --audit-level=high
 
+      - name: Run Trivy vulnerability scanner in fs mode
+        uses: xlmriosx/shared-library/actions/trivy-scan@main
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest

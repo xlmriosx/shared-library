@@ -1,0 +1,47 @@
+name: 'Trivy Security Scan'
+description: 'Runs Aquasecurity Trivy vulnerability scanner on filesystem or docker image'
+
+inputs:
+  scan-type:
+    description: 'Type of scan (fs, image)'
+    required: false
+    default: 'fs'
+  scan-ref:
+    description: 'Reference to scan (directory path for fs, image name for image)'
+    required: false
+    default: '.'
+  severity:
+    description: 'Severities to report (e.g. CRITICAL,HIGH)'
+    required: false
+    default: 'CRITICAL,HIGH'
+  exit-code:
+    description: 'Exit code when vulnerabilities are found'
+    required: false
+    default: '1'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Trivy vulnerability scanner (fs mode)
+      if: ${{ inputs.scan-type == 'fs' }}
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: ${{ inputs.scan-ref }}
+        format: 'table'
+        exit-code: ${{ inputs.exit-code }}
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: ${{ inputs.severity }}
+
+    - name: Run Trivy vulnerability scanner (image mode)
+      if: ${{ inputs.scan-type == 'image' }}
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'image'
+        image-ref: ${{ inputs.scan-ref }}
+        format: 'table'
+        exit-code: ${{ inputs.exit-code }}
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: ${{ inputs.severity }}
