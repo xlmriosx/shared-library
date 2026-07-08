@@ -11,6 +11,12 @@ inputs:
   slack_webhook_url:
     description: 'Slack Webhook URL'
     required: false
+  discord_webhook_url:
+    description: 'Discord Webhook URL'
+    required: false
+  steps_context:
+    description: 'JSON context of the steps to display their status (e.g., ${{ toJson(steps) }})'
+    required: false
   title:
     description: 'Custom title for the notification'
     required: false
@@ -77,3 +83,48 @@ runs:
         )
         
         curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "${{ inputs.slack_webhook_url }}"
+
+    # ---------------------------------------------------------
+    # DISCORD NOTIFICATION
+    # ---------------------------------------------------------
+    - name: Notify Discord
+      if: ${{ inputs.discord_webhook_url != '' }}
+      shell: bash
+      run: |
+        EMBED_COLOR="8421504" # Default gray
+        if [ "${{ inputs.status }}" == "success" ]; then
+          EMBED_COLOR="3066993" # Green
+        elif [ "${{ inputs.status }}" == "failure" ]; then
+          EMBED_COLOR="15158332" # Red
+        fi
+
+        RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        
+        FIELDS_JSON="[]"
+        if [ -n '${{ inputs.steps_context }}' ] && [ '${{ inputs.steps_context }}' != 'null' ]; then
+          FIELDS_JSON=$(echo '${{ inputs.steps_context }}' | jq -c '[to_entries[] | {name: (.key | if length > 256 then .[0:253]+"..." else . end), value: (if .value.outcome == "success" then "✅ Success" elif .value.outcome == "failure" then "❌ Failure" elif .value.outcome == "skipped" then "⏭️ Skipped" else "⚪ " + .value.outcome end), inline: true}]')
+        fi
+        
+        if [ -z "$FIELDS_JSON" ]; then
+          FIELDS_JSON="[]"
+        fi
+
+        PAYLOAD=$(jq -n \
+          --arg title "${{ inputs.title }}" \
+          --arg status "${{ inputs.status }}" \
+          --arg repo "${{ github.repository }}" \
+          --arg actor "${{ github.actor }}" \
+          --arg url "$RUN_URL" \
+          --arg color "$EMBED_COLOR" \
+          --argjson fields "$FIELDS_JSON" \
+          '{
+            embeds: [{
+              title: $title,
+              url: $url,
+              color: ($color | tonumber),
+              description: "**Status:** \($status)\n**Repository:** \($repo)\n**Triggered by:** \($actor)\n\n[🔗 **Ver Corrida en GitHub**](\($url))",
+              fields: $fields
+            }]
+          }')
+        
+        curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "${{ inputs.discord_webhook_url }}"

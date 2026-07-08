@@ -19,6 +19,8 @@ on:
         required: false
       SLACK_WEBHOOK_URL:
         required: false
+      DISCORD_WEBHOOK_URL:
+        required: false
 
 jobs:
   lint:
@@ -43,6 +45,7 @@ jobs:
           pip install flake8
 
       - name: Lint with flake8
+        id: lint
         run: flake8 . --count --show-source --statistics
 
   security-scan:
@@ -68,12 +71,15 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run Bandit (Code Scanning)
+        id: bandit
         run: bandit -r . -c bandit.yaml || bandit -r .
 
       - name: Run Safety (Dependency Scanning)
+        id: safety
         run: safety check || echo "No requirements found or safety check bypassed"
 
       - name: Run Trivy vulnerability scanner in fs mode
+        id: trivy
         uses: xlmriosx/shared-library/actions/trivy-scan@main
         with:
           scan-type: 'fs'
@@ -102,6 +108,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Test with pytest
+        id: pytest
         run: pytest ${{ inputs.pytest-target }} --cov=./ --cov-report=xml
         
       - name: Notify on Completion
@@ -111,4 +118,6 @@ jobs:
           status: ${{ job.status }}
           teams_webhook_url: ${{ secrets.TEAMS_WEBHOOK_URL }}
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          steps_context: ${{ toJson(steps) }}
           title: 'Python CI Completed'
