@@ -102,7 +102,7 @@ runs:
         
         FIELDS_JSON="[]"
         if [ -n '${{ inputs.steps_context }}' ] && [ '${{ inputs.steps_context }}' != 'null' ]; then
-          FIELDS_JSON=$(echo '${{ inputs.steps_context }}' | jq -c '[to_entries[] | {name: (.key | if length > 256 then .[0:253]+"..." else . end), value: (if .value.outcome == "success" then "✅ Success" elif .value.outcome == "failure" then "❌ Failure" elif .value.outcome == "skipped" then "⏭️ Skipped" else "⚪ " + .value.outcome end), inline: true}]')
+          FIELDS_JSON=$(echo '${{ inputs.steps_context }}' | jq -c '[to_entries[] | {name: (.key | if length > 256 then .[0:253]+"..." else . end), value: (if (.value.outcome // .value.result) == "success" then "✅ Success" elif (.value.outcome // .value.result) == "failure" then "❌ Failure" elif (.value.outcome // .value.result) == "skipped" then "⏭️ Skipped" else "⚪ " + (.value.outcome // .value.result) end), inline: true}]')
         fi
         
         if [ -z "$FIELDS_JSON" ]; then
