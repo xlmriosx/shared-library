@@ -17,6 +17,7 @@ Every workflow should generally include:
 3.  **Parallel Jobs**: Design jobs (e.g., `lint`, `test`, `security-scan`) to run concurrently unless they explicitly depend on each other.
 4.  **Setup & Caching**: Always use the native caching capabilities of the setup actions (e.g., `actions/setup-python`, `actions/setup-node`) to cache dependencies and speed up workflow runs.
 5.  **Security Scans**: Include a dedicated job to scan dependencies and code for known vulnerabilities.
+6.  **Cloud Authentication**: When deploying to cloud providers (AWS, Azure, GCP), design workflows to support both OIDC (OpenID Connect) and traditional long-lived credentials (API Keys/Secrets). Use conditional inputs to allow consuming repositories to choose either authentication method seamlessly.
 
 ## Primitive Composite Actions
 

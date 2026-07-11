@@ -18,11 +18,14 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      aws-role-arn:
+        required: false
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
-        required: true
+        required: false
       AWS_SECRET_ACCESS_KEY:
-        required: true
+        required: false
       TEAMS_WEBHOOK_URL:
         required: false
       SLACK_WEBHOOK_URL:
@@ -34,6 +37,9 @@ jobs:
   build-and-push:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -45,8 +51,9 @@ jobs:
         id: aws-creds
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID || '' }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY || '' }}
+          role-to-assume: ${{ inputs.aws-role-arn || '' }}
           aws-region: ${{ inputs.aws-region }}
 
       - name: Login to Amazon ECR
