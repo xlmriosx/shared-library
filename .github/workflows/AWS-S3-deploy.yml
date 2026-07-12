@@ -16,10 +16,10 @@ on:
         default: 'us-east-1'
       s3-bucket:
         required: true
-      aws-role-arn:
-        required: false
         type: string
     secrets:
+      AWS_ROLE_ARN:
+        required: false
       AWS_ACCESS_KEY_ID:
         required: false
       AWS_SECRET_ACCESS_KEY:
@@ -66,7 +66,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID || '' }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY || '' }}
-          role-to-assume: ${{ inputs.aws-role-arn || '' }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN || '' }}
           aws-region: ${{ inputs.aws-region }}
 
       - name: Deploy to S3
