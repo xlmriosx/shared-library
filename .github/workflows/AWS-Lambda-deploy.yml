@@ -1,4 +1,4 @@
-name: AWS ECR Docker Push
+name: AWS Lambda Deploy
 
 on:
   workflow_call:
@@ -12,6 +12,9 @@ on:
         type: string
         default: 'us-east-1'
       ecr-repository:
+        required: true
+        type: string
+      function-name:
         required: true
         type: string
       image-tag:
@@ -34,15 +37,12 @@ on:
         required: false
 
 jobs:
-  build-and-push:
-    name: Build and Push to ECR
+  deploy:
+    name: Build, Push and Update Lambda
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-    defaults:
-      run:
-        working-directory: ${{ inputs.working-directory }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -58,6 +58,15 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID || '' }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY || '' }}
 
+      - name: Update Lambda Image
+        uses: xlmriosx/shared-library/actions/aws-lambda-update@main
+        with:
+          aws-region: ${{ inputs.aws-region }}
+          function-name: ${{ inputs.function-name }}
+          ecr-repository: ${{ inputs.ecr-repository }}
+          image-tag: ${{ inputs.image-tag }}
+          role-to-assume: ${{ inputs.aws-role-arn || '' }}
+
       - name: Notify on Completion
         if: always()
         uses: xlmriosx/shared-library/actions/notify@main
@@ -67,4 +76,4 @@ jobs:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           steps_context: ${{ toJson(steps) }}
-          title: 'AWS ECR Push Completed'
+          title: 'AWS Lambda Deploy Completed'
